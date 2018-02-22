@@ -1,0 +1,59 @@
+#version 330 core
+
+uniform struct PointLightP
+{
+	vec4 position;
+	vec4 ambient;
+	vec4 diffuse;
+	vec4 specular;
+	vec3 attenuation;
+	vec3 spotDirection;
+	float spotExponent;
+        float spotCos;
+	
+} light;
+
+uniform struct Material
+{
+	sampler2D texture;
+	vec4 ambient;
+	vec4 diffuse;
+	vec4 specular;
+	float shininess;	
+} material;
+
+in Vertex {
+	vec2 texcoord;
+	vec3 normal;
+	vec3 lightDir;
+	vec3 viewDir;
+	float distance;
+} Vert;
+
+void main() {
+  vec3 normal = normalize(Vert.normal);
+  vec3 lightDir = normalize(Vert.lightDir);
+  vec3 viewDir = normalize(Vert.viewDir);
+  //расчёт угла отклонения от направления прожектора до текущей точки
+  float spotEffect = dot(normalize(light.spotDirection),-lightDir);
+  //ограничим зону влияние прожектора
+  float spot = float(spotEffect > light.spotCos);
+  //экспоненциальное затухание к краям зоны влияния
+  spotEffect = max(pow(spotEffect,light.spotExponent),0.0);
+  //коэффициент затухания прожектора
+  float attenuation = spot*spotEffect/(light.attenuation[0]+light.attenuation[1] * Vert.distance + light.attenuation[2]* Vert.distance* Vert.distance);
+  
+  //добавление фоновое освещение
+  vec4 color = material.ambient * light.ambient * attenuation;
+
+  //добавление рассеянного света
+  float Ndot = max(dot(normal,lightDir),0.0);
+  color+=material.diffuse*light.diffuse*Ndot*attenuation;
+  
+  //добавление отраженного света
+  float RdotVpow = max(pow(dot(reflect(-lightDir,normal),viewDir),material.shininess),0.0);
+
+  color+=material.specular*light.specular*RdotVpow *attenuation;
+  //color *= texture(material.texture, Vert.texcoord);
+  gl_FragColor = color;
+}

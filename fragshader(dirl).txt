@@ -1,0 +1,45 @@
+#version 330 core
+
+uniform struct PointLight
+{
+	vec4 direction;
+	vec4 ambient;
+	vec4 diffuse;
+	vec4 specular;
+} light;
+
+uniform struct Material
+{
+	sampler2D texture;
+	vec4 ambient;
+	vec4 diffuse;
+	vec4 specular;
+	float shininess;	
+} material;
+
+in Vertex {
+	vec2 texcoord;
+	vec3 normal;
+	vec3 lightDir;
+	vec3 viewDir;
+} Vert;
+
+void main() {
+//нормализация полученных данныхдля коррекции интерполяции
+  vec3 normal = normalize(Vert.normal);
+  vec3 lightDir = normalize(Vert.lightDir);
+  vec3 viewDir = normalize(Vert.viewDir);
+  
+  //добавление фоновое освещение
+  vec4 color = material.ambient * light.ambient;
+  
+  //добавление рассеянного света
+  float Ndot = max(dot(normal,lightDir),0.0);
+  color += material.diffuse * light.diffuse*Ndot;
+  
+  //добавление отраженного света
+  float RdotVpow = max(pow(dot(reflect(-lightDir, normal), viewDir), material.shininess), 0.0);
+  color += material.specular * light.specular*RdotVpow;
+  //color *= texture(material.texture, Vert.texcoord);
+  gl_FragColor = color;
+  }
